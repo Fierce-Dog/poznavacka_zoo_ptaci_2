@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nekonečná Poznávačka</title>
+    <style>
+        :root { --primary: #4a90e2; --success: #2ecc71; }
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: #f0f2f5; 
+            display: flex; 
+            justify-content: center; 
+            
+            /* ZMĚNY ZDE: */
+            align-items: flex-start; /* Zarovná kartu k hornímu okraji místo na střed */
+            min-height: auto;        /* Zruší vynucenou výšku 100vh */
+            padding-top: 10px;       /* Malá mezera od úplného vršku, aby to nebylo nalepené */
+            margin: 0; 
+        }
+        .card { background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
+        img { 
+			width: 100%; 
+			height: 300px; /* Můžete zvětšit na 350px nebo 400px podle potřeby */
+			border-radius: 15px; 
+			object-fit: contain; /* TATO ZMĚNA zajistí, že bude vidět celý obrázek */
+			margin-bottom: 0; 
+			background: #fdfdfd; /* Jemné pozadí, kdyby byl obrázek úzký */
+		}
+        input { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; outline: none; }
+        input:focus { border-color: var(--primary); }
+        button { width: 100%; background: #4db754; color: white; border: none; padding: 12px; border-radius: 10px; margin-top: 10px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        #msg { margin-top: 15px; margin-bottom: 10px; font-weight: bold; font-size: 1.2rem; min-height: 20px; line-height: 1.4; transition: all 0.3s;}
+        #info { color: gray; font-size: 0.8rem; margin-top: 10px; }
+		.card { 
+			display: flex; 
+			flex-direction: column; 
+			gap: 4px; /* Vytvoří stejné mezery mezi prvky */
+		}
+		#msg { 
+			margin: 5; 
+			padding: 10;
+            line-height: 1;
+			order: 1; /* Zpráva bude úplně nahoře */
+		}
+		#info { 
+            margin: 0px 0 5px 0;
+			order: 2; /* Info o pokusech bude pod zprávou */
+		}
+		#pic { 
+			order: 3; /* Obrázek pod info texty */
+            margin: 5px 0;
+		}
+		#input-area {
+			order: 5; /* Vstupní pole a tlačítko úplně dole */
+		}
+        #video-box { 
+            order: 4; /* Tlačítko na video bude hned pod obrázkem */
+            display: flex;
+            justify-content: center;
+            margin-top: 5px;
+            margin-bottom: 0px;
+        }
+        .back-link {
+            display: block; /* Zajistí, že odkaz zabere celou šířku a umožní zarovnání */
+            text-align: left; /* Tlačí text odkazu doleva */
+            margin-bottom: 20px;
+            text-decoration: none;
+            color: #888;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+        .back-link:hover {
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <a href="https://fierce-dog.github.io/poznavacky_linktree/" class="back-link">⬅ Zpět na rozcestí</a>
+    <p id="msg">Máš 3 pokusy</p>
+    <p id="info"></p>
+    <img id="pic" src="" alt="Načítám...">
+    <div id="video-box" style="margin-top: 1px; margin-bottom: 10px;"></div>
+    <div id="input-area">
+        <input type="text" id="guess-name" placeholder="Druh česky (např. pes domácí)" autocomplete="off"
+            onkeypress="if(event.key === 'Enter') check()">
+        <input type="text" id="guess-order" placeholder="Řád latinsky (např. carnivora)" autocomplete="off" style="margin-top: 10px;"
+            style="margin-top: 10px; background-color: #eee;" disabled
+            onkeypress="if(event.key === 'Enter') check()">
+        <button onclick="check()" id="check-btn" style="margin-top: 10px;">Odeslat</button>
+    </div>
+</div>
+
+<script>
+    // --- VAŠE DATA ---
+    const items = [
+        /*
+        { file: "pstros_dvouprsty.jpg", name: "Pštros dvouprstý", order: "Palaeognathae", link: "https://www.youtube.com/watch?v=DJfb8bQ1b14&ab_channel=StoriesOfTheKruger" },
+        { file: "emu_hnedy.jpg", name: "Emu hnědý", order: "Palaeognathae", link: "https://www.youtube.com/watch?v=AxnOWHkNbco" },
+        { file: "nandu_pampovy.jpg", name: "Nandu pampový", order: "Palaeognathae", link: "https://www.youtube.com/watch?v=YNp2wgZCGqs" },
+        { file: "kasuar_prilbovy.jpg", name: "Kasuár přílbový", order: "Palaeognathae", link: "https://www.youtube.com/watch?v=0XeXpvvNn-8&ab_channel=AthertonTablelandsBirdwatchers%27Cabin" },
+        { file: "kivi_hnedy.jpg", name: "Kivi hnědý", order: "Palaeognathae", link: "https://www.youtube.com/watch?v=z8SdqOT_no0&ab_channel=DeepSouthAdventure" },
+        { file: "kachna_divoka.jpg", name: "Kachna divoká", order: "Anseriformes", link: "https://www.youtube.com/watch?v=jEIH2WHXPm0&ab_channel=MichaelAutumn" },
+        { file: "kachnicka_mandarinska.jpg", name: "Kachnička mandarinská", order: "Anseriformes", link: "https://www.youtube.com/watch?v=16HQIEjYqVY" },
+        { file: "hohol_severni.jpg", name: "Hohol severní", order: "Anseriformes", link: "https://www.youtube.com/watch?v=Z4e2iZ7yAu4" },
+        { file: "polak_maly.jpg", name: "Polák malý", order: "Anseriformes", link: "https://www.youtube.com/watch?v=L1upMezPUsU" },
+        { file: "morcak_velky.jpg", name: "Morčák velký", order: "Anseriformes", link: "https://ebird.org/species/commer" },
+        { file: "husa_velka.jpg", name: "Husa velká", order: "Anseriformes", link: "https://www.youtube.com/watch?v=HUD83KFqnNk&ab_channel=Birdfun" },
+        { file: "berneska_velka.jpg", name: "Berneška velká", order: "Anseriformes", link: "https://www.youtube.com/watch?v=LtJIUqBhkJU&ab_channel=Birdfun" },
+        { file: "labut_velka.jpg", name: "Labuť velká", order: "Anseriformes", link: "https://ebird.org/species/mutswa" },
+        { file: "krepel_kalifornsky.jpg", name: "Křepel kalifornský", order: "Galliformes", link: "https://www.youtube.com/watch?v=etbcYxntzsY" },
+        { file: "krepelka_polni.jpg", name: "Křepelka polní", order: "Galliformes", link: "https://www.youtube.com/watch?v=W-j5LVjhDg8" },
+        { file: "koroptev_polni.jpg", name: "Koroptev polní", order: "Galliformes", link: "https://www.youtube.com/watch?v=KHXXAt9EGrM&ab_channel=EuropeanWildlifebyLuk%C3%A1%C5%A1Pich" },
+        { file: "bazant_zlaty.jpg", name: "Bažant zlatý", order: "Galliformes", link: "https://www.youtube.com/watch?v=Wu82VMVvPco" },
+        { file: "bazant_obecny.jpg", name: "Bažant obecný", order: "Galliformes", link: "https://www.youtube.com/watch?v=96P7cvSG6Dc&ab_channel=HawaiiBirds" },
+        { file: "pav_korunkaty.jpg", name: "Páv korunkatý", order: "Galliformes", link: "https://www.youtube.com/watch?v=BbMyKj1vDsc&ab_channel=SumangalaRajapakse" },
+        { file: "tetrev_hlusec.jpg", name: "Tetřev hlušec", order: "Galliformes", link: "https://www.youtube.com/watch?v=ODqO_v5fs6c&ab_channel=Bluebird%27sinblueworld" },
+        { file: "perlicka_kropenata.jpg", name: "Perlička kropenatá", order: "Galliformes", link: "https://www.youtube.com/watch?v=TLcafDWO5Rc&ab_channel=BrookfieldZooChicago" },
+        { file: "tucnak_cisarsky.jpg", name: "Tučňák císařský", order: "Sphenisciformes", link: "https://www.youtube.com/watch?v=FKDD5t8FIY0&ab_channel=PenguinsInternational" },
+        { file: "tucnak_humboldtuv.jpg", name: "Tučňák Humboldtův", order: "Sphenisciformes", link: "https://www.youtube.com/watch?v=BAkTiv90UZM" },
+        { file: "tucnak_osli.jpg", name: "Tučňák oslí", order: "Sphenisciformes", link: "https://www.youtube.com/watch?v=J7Dkq-F7-bs" },
+        { file: "potapka_rohac.jpg", name: "Potápka roháč", order: "Podicipediformes", link: "https://www.youtube.com/watch?v=CHRXi1UoOCw&ab_channel=YouTubeBirds" },
+        { file: "potapka_cernokrka.jpg", name: "Potápka černokrká", order: "Podicipediformes", link: "https://www.youtube.com/watch?v=rS9KnzwfqrU" },
+        { file: "albatros_stehovavy.jpg", name: "Albatros stěhovavý", order: "Procellariiformes", link: "https://www.youtube.com/watch?v=zzx6_AOs0wM&ab_channel=ravitimenaturestatus" },
+        { file: "kormoran_velky.jpg", name: "Kormorán velký", order: "Suliformes", link: "https://www.youtube.com/watch?v=WDSk4Yvz8kY&ab_channel=4BirdsOrnithology" },
+        { file: "terej_modronohy.jpg", name: "Terej modronohý", order: "Suliformes", link: "https://www.youtube.com/watch?v=1VfiiNrKA-0" },
+        { file: "clunozobec_africky.jpg", name: "Člunozobec africký", order: "Pelecaniformes", link: "https://www.youtube.com/watch?v=PZeO_Lh_fK4" },
+        { file: "pelikan_bily.jpg", name: "Pelikán bílý", order: "Pelecaniformes", link: "https://www.youtube.com/watch?v=QM7khXlIeM0&ab_channel=4BirdsOrnithology" },
+        { file: "volavka_popelava.jpg", name: "Volavka popelavá", order: "Pelecaniformes", link: "https://www.youtube.com/watch?v=RuKcDnI8i4o&ab_channel=BirdSounds" },
+        { file: "volavka_bila.jpg", name: "Volavka bílá", order: "Pelecaniformes", link: "https://www.youtube.com/watch?v=FaaW0Purbrw" },
+        { file: "kvakos_nocni.jpg", name: "Kvakoš noční", order: "Pelecaniformes", link: "https://www.youtube.com/watch?v=TeYdmL7gsR8" },
+        { file: "kolpik_bily.jpg", name: "Kolpík bílý", order: "Pelecaniformes", link: "https://www.youtube.com/watch?v=nFoXVDrOGL0" },
+        { file: "ibis_posvatny.jpg", name: "Ibis posvátný", order: "Pelecaniformes", link: "https://www.youtube.com/watch?v=CZzuetQjyCs" },
+        { file: "cap_bily.jpg", name: "Čáp bílý", order: "Ciconiiformes", link: "https://www.youtube.com/watch?v=9YPM3rNfZNI" },
+        { file: "cap_cerny.jpg", name: "Čáp černý", order: "Ciconiiformes", link: "https://www.youtube.com/watch?v=EbiMgDdMg4M" },
+        { file: "marabu_africky.jpg", name: "Marabu africký", order: "Ciconiiformes", link: "https://www.youtube.com/watch?v=sL97c5I5B8g" },
+        { file: "plamenak_ruzovy.jpg", name: "Plameňák růžový", order: "Phoenicopteriformes", link: "https://www.youtube.com/watch?v=lUY_YhqmZaA" },
+        { file: "kane_lesni.jpg", name: "Káně lesní", order: "Accipitriformes", link: "https://www.youtube.com/watch?v=0XAZnalJoNE" },
+        { file: "kane_harrisova.jpg", name: "Káně Harrisova", order: "Accipitriformes", link: "https://www.youtube.com/watch?v=FbMEEkJpOSE" },
+        { file: "jestrab_lesni.jpg", name: "Jestřáb lesní", order: "Accipitriformes", link: "https://www.youtube.com/watch?v=vbXyC6lLs00" },
+        { file: "lunak_cerveny.jpg", name: "Luňák červený", order: "Accipitriformes", link: "https://www.youtube.com/watch?v=fkJ-4D9lrBw" },
+        { file: "orel_morsky.jpg", name: "Orel mořský", order: "Accipitriformes", link: "https://www.youtube.com/watch?v=8tOVuzR00ks" },
+        { file: "orel_belohlavy.jpg", name: "Orel bělohlavý", order: "Accipitriformes", link: "https://www.youtube.com/watch?v=5DTTi5vy5fc" },
+        { file: "orlosup_bradaty.jpg", name: "Orlosup bradatý", order: "Accipitriformes", link: "https://www.youtube.com/watch?v=eoHVGvQT7wI" },
+        { file: "sup_hnedy.jpg", name: "Sup hnědý", order: "Accipitriformes", link: "https://www.youtube.com/watch?v=Q4pFXoRA0A8" },
+        { file: "postolka_obecna.jpg", name: "Poštolka obecná", order: "Falconiformes", link: "https://www.youtube.com/watch?v=MiyIA_lyuAg" },
+        { file: "sokol_stehovavy.jpg", name: "Sokol stěhovavý", order: "Falconiformes", link: "https://www.youtube.com/watch?v=0dGVO00Cg8w" },
+        { file: "hadilov_pisar.jpg", name: "Hadilov písař", order: "Accipitriformes", link: "https://www.youtube.com/watch?v=7-G0tmNmIVU" },
+        { file: "kondor_kralovsky.jpg", name: "Kondor královský", order: "Accipitriformes", link: "https://www.youtube.com/watch?v=Qdcuh_AXB7o" },
+        */
+        { file: "jerab_popelavy.jpg", name: "Jeřáb popelavý", order: "Gruiformes", link: "https://www.youtube.com/watch?v=Yxryodcgr8s" },
+        { file: "lyska_cerna.jpg", name: "Lyska černá", order: "Gruiformes", link: "https://www.youtube.com/shorts/sFfBQvfptfM" },
+        { file: "slipka_zelenonoha.jpg", name: "Slípka zelenonohá", order: "Gruiformes", link: "https://www.youtube.com/watch?v=bVBkd_KNu3M&ab_channel=AnnieG-Oiseauxetnature" },
+        { file: "drop_velky.jpg", name: "Drop velký", order: "Gruiformes", link: "https://www.youtube.com/watch?v=SNQ_ScW-8NE" },
+        { file: "racek_chechtavy.jpg", name: "Racek chechtavý", order: "Charadriiformes", link: "https://www.youtube.com/watch?v=MQWoGndwuuw&ab_channel=maxipoika" },
+        { file: "rybak_obecny.jpg", name: "Rybák obecný", order: "Charadriiformes", link: "https://www.youtube.com/watch?v=auf8-9TZh4g" },
+        { file: "holub_skalni.jpg", name: "Holub skalní", order: "Columbiformes", link: "https://www.youtube.com/watch?v=Bz-AGAtCi98&ab_channel=Birdfun" },
+        { file: "hrdlicka_zahradni.jpg", name: "Hrdlička zahradní", order: "Columbiformes", link: "https://www.youtube.com/watch?v=qpy0hxeUmKQ&ab_channel=BehindNhu" },
+        { file: "holub_hrivnac.jpg", name: "Holub hřivnáč", order: "Columbiformes", link: "https://www.youtube.com/watch?v=poeYBbpR9z4&ab_channel=MyBirdingYear" },
+        { file: "ara_ararauna.jpg", name: "Ara ararauna", order: "Psittaciformes", link: "https://www.youtube.com/watch?v=j6S-0hy3IOY&ab_channel=ParrotParadise" },
+        { file: "amazonan_modrocely.jpg", name: "Amazoňan modročelý", order: "Psittaciformes", link: "https://www.youtube.com/watch?v=piNckoRp1sw&ab_channel=FaunaandFlora" },
+        { file: "papousek_sedy.jpg", name: "Papoušek šedý", order: "Psittaciformes", link: "https://www.youtube.com/watch?v=biLsqx8veNM&ab_channel=WashweshnyW" },
+        { file: "kakadu_ruzovy.jpg", name: "Kakadu růžový", order: "Psittaciformes", link: "https://www.youtube.com/watch?v=dni3m1cdGQM&ab_channel=WildWarriorBill" },
+        { file: "andulka_vlnkovana.jpg", name: "Andulka vlnkovaná", order: "Psittaciformes", link: "https://www.youtube.com/watch?v=OC2OgKAJhI8&ab_channel=AviBirds" },
+        { file: "nestor_kea.jpg", name: "Nestor kea", order: "Psittaciformes", link: "https://www.youtube.com/watch?v=_hzAGygC_9E&ab_channel=RJOHN" },
+        { file: "kukacka_obecna.jpg", name: "Kukačka obecná", order: "Cuculiformes", link: "https://www.youtube.com/watch?v=q6njK5acv-A&ab_channel=WildlifeWorld" },
+        { file: "sova_palena.jpg", name: "Sova pálená", order: "Strigiformes", link: "https://www.youtube.com/watch?v=gLPJlu0Ac7c&ab_channel=HighOnNature" },
+        { file: "pustik_obecny.jpg", name: "Puštík obecný", order: "Strigiformes", link: "https://www.youtube.com/watch?v=JPzTVhzIN08&ab_channel=OwlVoices" },
+        { file: "vyr_velky.jpg", name: "Výr velký", order: "Strigiformes", link: "https://www.youtube.com/watch?v=Xqv-orpCgx0&ab_channel=MiroslavMaric" },
+        { file: "kalous_usaty.jpg", name: "Kalous ušatý", order: "Strigiformes", link: "https://www.youtube.com/watch?v=KZ8wRp4irE4&ab_channel=HighOnNature" },
+        { file: "sova_rybarska.jpg", name: "Sova rybářská", order: "Strigiformes", link: "https://www.youtube.com/watch?v=9pK0zwCqP30" },
+        { file: "sovice_snezni.jpg", name: "Sovice sněžní", order: "Strigiformes", link: "https://www.youtube.com/watch?v=pkB_M6gx8HI" },
+        { file: "rorys_obecny.jpg", name: "Rorýs obecný", order: "Apodiformes", link: "https://www.youtube.com/watch?v=YHIexcDi5HE&ab_channel=4BirdsOrnithology" },
+        { file: "kolibrik_cerveny.jpg", name: "Kolibřík červený", order: "Apodiformes", link: "https://www.youtube.com/watch?v=q85uU5EyRZg&ab_channel=sciloj" },
+        { file: "lednacek_ricni.jpg", name: "Ledňáček říční", order: "Coraciiformes", link: "https://www.youtube.com/watch?v=TuUxUhsmWcc&ab_channel=4BirdsOrnithology" },
+        { file: "lednak_velky.jpg", name: "Ledňák velký", order: "Coraciiformes", link: "https://www.youtube.com/watch?v=SDNIDj-EKoU" },
+        { file: "dudek_chocholaty.jpg", name: "Dudek chocholatý", order: "Coraciiformes", link: "https://www.youtube.com/watch?v=mERIvytIcpQ&ab_channel=TheConqueorofHearts" },
+        { file: "dvojzoborozec_zlutozoby.jpg", name: "Dvojzoborožec žlutozobý", order: "Coraciiformes", link: "https://www.youtube.com/watch?v=0ppoIAbqfNE&ab_channel=Meristogenys69" },
+        { file: "datel_cerny.jpg", name: "Datel černý", order: "Piciformes", link: "https://www.youtube.com/watch?v=DduLW32BRpY&ab_channel=BIRDS" },
+        { file: "strakapoud_velky.jpg", name: "Strakapoud velký", order: "Piciformes", link: "https://www.youtube.com/watch?v=Qy5Uk_YctX0&ab_channel=EuropeanWildlifebyLuk%C3%A1%C5%A1Pich" },
+        { file: "zluna_zelena.jpg", name: "Žluna zelená", order: "Piciformes", link: "https://www.youtube.com/watch?v=U6lZEb3JSJs&ab_channel=EuropeanWildlifebyLuk%C3%A1%C5%A1Pich" },
+        { file: "tukan_obrovsky.jpg", name: "Tukan obrovský", order: "Piciformes", link: "https://www.youtube.com/watch?v=YFR1YUvb-Yg&ab_channel=FaunaandFlora" },
+        { file: "vlastovka_obecna.jpg", name: "Vlaštovka obecná", order: "Passeriformes", link: "https://www.youtube.com/watch?v=SmBQAFjwCKo&ab_channel=Birdingisgood" },
+        { file: "jiricka_obecna.jpg", name: "Jiřička obecná", order: "Passeriformes", link: "https://www.youtube.com/watch?v=78Y50i5i9lA&ab_channel=SoundsMajestic" },
+        { file: "konipas_bily.jpg", name: "Konipas bílý", order: "Passeriformes", link: "https://www.youtube.com/watch?v=Ffu-2jEdLPw&ab_channel=Birdfun" },
+        { file: "kos_cerny.jpg", name: "Kos černý", order: "Passeriformes", link: "https://www.youtube.com/watch?v=SGcoFGW4Rm0&ab_channel=NaturePictureLibrary" },
+        { file: "drozd_zpevny.jpg", name: "Drozd zpěvný", order: "Passeriformes", link: "https://www.youtube.com/watch?v=G53oH-MI9qU&ab_channel=ESLandPopularCulture" },
+        { file: "mlynarik_dlouhoocasy.jpg", name: "Mlynařík dlouhoocasý", order: "Passeriformes", link: "https://www.youtube.com/watch?v=DgeE3Bcnfco" },
+        { file: "sykora_konadra.jpg", name: "Sýkora koňadra", order: "Passeriformes", link: "https://www.youtube.com/watch?v=meTo2kdAsGc&ab_channel=WildlifeWorld" },
+        { file: "sykora_modrinka.jpg", name: "Sýkora modřinka", order: "Passeriformes", link: "https://www.youtube.com/watch?v=WSGgzKDWHiU" },
+        { file: "dlask_tlustozoby.jpg", name: "Dlask tlustozobý", order: "Passeriformes", link: "https://www.youtube.com/watch?v=nZUlizGosuc" },
+        { file: "hyl_obecny.jpg", name: "Hýl obecný", order: "Passeriformes", link: "https://www.youtube.com/watch?v=aoxUatBygiY" },
+        { file: "penkava_obecna.jpg", name: "Pěnkava obecná", order: "Passeriformes", link: "https://www.youtube.com/watch?v=COllwlh-jXo&ab_channel=WildlifeWorld" },
+        { file: "vrabec_domaci.jpg", name: "Vrabec domácí", order: "Passeriformes", link: "https://www.youtube.com/watch?v=dV1PMs0C5Eo&ab_channel=Soumo%27sBirdbook" },
+        { file: "vrabec_polni.jpg", name: "Vrabec polní", order: "Passeriformes", link: "https://www.youtube.com/watch?v=t4i3V7d_t9M" },
+        { file: "stehlik_obecny.jpg", name: "Stehlík obecný", order: "Passeriformes", link: "https://www.youtube.com/watch?v=L3f9w2TuMOM" },
+        { file: "spacek_obecny.jpg", name: "Špaček obecný", order: "Passeriformes", link: "https://www.youtube.com/watch?v=Xa9CIOYjPDo&ab_channel=PerLundkvist" },
+        { file: "straka_obecna.jpg", name: "Straka obecná", order: "Passeriformes", link: "https://www.youtube.com/watch?v=y4pbkXIQyyg&ab_channel=WildAmbience" },
+        { file: "sojka_obecna.jpg", name: "Sojka obecná", order: "Passeriformes", link: "https://www.youtube.com/watch?v=bnL9RuZjBZs&ab_channel=RobRambler" },
+        { file: "krkavec_velky.jpg", name: "Krkavec velký", order: "Passeriformes", link: "https://www.youtube.com/watch?v=ePgdB5MqDxU&ab_channel=GeorgeVlad" },
+        { file: "havran_polni.jpg", name: "Havran polní", order: "Passeriformes", link: "https://www.youtube.com/watch?v=epupVtjTgl8&ab_channel=Falafel" },
+        { file: "kavka_obecna.jpg", name: "Kavka obecná", order: "Passeriformes", link: "https://www.youtube.com/watch?v=87qI2TikJ7E&ab_channel=ToToWildlife" }
+    ];
+
+    let current;
+    let attempts = 0; 
+    let phase = 1; 
+    let pool = [...items]; // Musíme pool naplnit hned na začátku
+    let correctNameTotal = 0;
+    let correctOrderTotal = 0;
+    let shownTotal = 0;
+
+    function next() {
+        const msgField = document.getElementById("msg");
+        const picField = document.getElementById("pic");
+        const inName = document.getElementById("guess-name");
+        const inOrder = document.getElementById("guess-order");
+        const videoBox = document.getElementById("video-box");
+
+        // 1. KONTROLA POOLU (Tohle ti chybělo)
+        if (pool.length === 0) {
+            pool = [...items]; // Restart kola
+            correctNameTotal = 0; // RESET x
+            correctOrderTotal = 0; // RESET y
+            shownTotal = 0; // RESET z
+        }
+
+        // 2. VÝBĚR OBRÁZKU
+        const idx = Math.floor(Math.random() * pool.length);
+        current = pool[idx];
+        picField.src = current.file;
+
+        // --- 3. LOGIKA PRO VIDEO TLAČÍTKO ---
+        videoBox.innerHTML = ""; // Vyčistit minulé kolo
+        if (current.link && current.link !== "") {
+            const videoBtn = document.createElement("a");
+            videoBtn.href = current.link;
+            videoBtn.target = "_blank";
+            videoBtn.innerHTML = "📺 Odkaz na video";
+        
+        // Styl tlačítka
+            videoBtn.style.display = "inline-block";
+            videoBtn.style.padding = "8px 8px";
+            videoBtn.style.backgroundColor = "#4db754";
+            videoBtn.style.color = "white";
+            videoBtn.style.borderRadius = "10px";
+            videoBtn.style.textDecoration = "none";
+            videoBtn.style.fontSize = "13px";
+            videoBtn.style.fontWeight = "bold";
+            videoBtn.style.marginTop = "5px";
+            videoBtn.style.marginBottom = "2px";
+            videoBtn.style.boxShadow = "0 3px 8px rgba(21, 101, 192, 0.3)";
+
+        videoBox.appendChild(videoBtn);
+        }
+
+        // 3. RESET STAVU
+        phase = 1; 
+        attempts = 0;
+
+        inName.value = "";
+        inName.disabled = false;
+        inName.style.backgroundColor = "white";
+        inName.style.borderColor = "#ddd";
+        inName.style.color = "black";      // Vrátí barvu písma na černou
+        inName.style.fontWeight = "normal"; // Vrátí písmo z tučného na normální
+        
+        inOrder.value = "";
+        inOrder.disabled = true;
+        inOrder.style.backgroundColor = "#eee";
+        inOrder.style.borderColor = "#ddd";
+        inOrder.style.color = "black";
+        inOrder.style.fontWeight = "normal";
+
+        msgField.innerText = "Poznej druh ptáka";
+        msgField.style.color = "green";
+        
+        inName.focus();
+        updateInfo();
+    }
+
+    function updateInfo() {
+        // Kontrola, zda prvek info existuje
+        const infoField = document.getElementById("info");
+        if(infoField) {
+            const displayAttempts = Math.min(attempts + 1, 3);
+            infoField.innerText = `Skóre: ${correctNameTotal}/${correctOrderTotal}/${shownTotal}/${items.length} | Zbývá: ${pool.length} | Pokus: ${displayAttempts}/3`;
+            infoField.style.color = "#666";
+        }
+    }
+
+    function check() {
+        // Pokud z nějakého důvodu neběží hra, nic nedělej
+        if (!current) return;
+
+        const inName = document.getElementById("guess-name");
+        const inOrder = document.getElementById("guess-order");
+        const msgField = document.getElementById("msg");
+
+        if (phase === 1) {
+            const val = inName.value.trim().toLowerCase();
+            if (val === current.name.toLowerCase()) {
+            successPhase1(true); // Uhodnuto
+        } else {
+            attempts++;
+            if (attempts < 3) {
+                msgField.innerText = "Špatný druh, zkus to znovu!";
+                msgField.style.color = "orange";
+                inName.value = "";
+                inName.focus();
+            } else {
+                successPhase1(false); // Neuhodnuto po 3 pokusech
+            }
+        }
+        } else {
+            const val = inOrder.value.trim().toLowerCase();
+        if (val === current.order.toLowerCase()) {
+            successPhase2(true);
+        } else {
+            attempts++;
+            if (attempts < 3) {
+                msgField.innerText = "Špatný řád, zkus to znovu!";
+                msgField.style.color = "orange";
+                inOrder.value = "";
+                inOrder.focus();
+            } else {
+                successPhase2(false);
+            }
+        }
+        }
+        updateInfo();
+    }
+
+    function successPhase1(wasCorrect) {
+        const inName = document.getElementById("guess-name");
+        const inOrder = document.getElementById("guess-order");
+        
+        inName.value = current.name;
+        inName.disabled = true;
+
+        if (wasCorrect) {
+            correctNameTotal++; // PŘIČTEME BOD ZA DRUH (x)
+            inName.style.backgroundColor = "#e8f5e9"; // Zelená
+            inName.style.borderColor = "green";
+            inName.style.color = "green";
+            inName.style.fontWeight = "bold";
+        } else {
+            inName.style.backgroundColor = "#ffebee"; // Světle červená
+            inName.style.borderColor = "red";
+            inName.style.color = "red";
+            inName.style.fontWeight = "bold";
+        }
+        
+        phase = 2;
+        attempts = 0; 
+        inOrder.disabled = false;
+        inOrder.style.backgroundColor = "white";
+        inOrder.focus();
+        document.getElementById("msg").innerText = wasCorrect ? "Správně! Teď řád:" : "Pamatuj si druh. Teď řád:";
+        updateInfo();
+    }
+
+    function successPhase2(wasCorrect) {
+        const inOrder = document.getElementById("guess-order");
+        const msgField = document.getElementById("msg");
+
+        inOrder.value = current.order;
+        inOrder.disabled = true;
+
+        if (wasCorrect) {
+            correctOrderTotal++; // PŘIČTEME BOD ZA ŘÁD (y)
+            inOrder.style.backgroundColor = "#e8f5e9";
+            inOrder.style.borderColor = "green";
+            inOrder.style.color = "green";
+            inOrder.style.fontWeight = "bold";
+            msgField.innerText = "Kompletní!";
+            msgField.style.color = "green";
+        } else {
+            inOrder.style.backgroundColor = "#ffebee";
+            inOrder.style.borderColor = "red";
+            inOrder.style.color = "red";
+            inOrder.style.fontWeight = "bold";
+            msgField.innerText = "Správně bylo:";
+            msgField.style.color = "red";
+        }
+        
+        shownTotal++;
+        pool = pool.filter(i => i !== current);
+
+        // ČASOVÁNÍ: Pokud bylo něco špatně, počkáme 5 sekund (5000ms), jinak 2 sekundy (2000ms)
+        let delay = wasCorrect ? 2000 : 5000;
+        
+        // Malý trik: Pokud jsi neuhádl už to PRVNÍ políčko, taky dáme delší čas
+        const inName = document.getElementById("guess-name");
+        if (inName.style.borderColor === "red") delay = 5000;
+
+        updateInfo();
+        setTimeout(next, delay);
+    }
+
+    // Nastartování hry
+    next();
+</script>
+</body>
+</html>
